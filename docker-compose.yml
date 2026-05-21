@@ -1,0 +1,161 @@
+services:
+
+  product-service:
+    build:
+      context: .
+      dockerfile: services/product-service/Dockerfile
+    container_name: product-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://product-db:5432/product-db
+      SPRING_DATA_REDIS_HOST: product-redis
+      SPRING_RABBITMQ_HOST: rabbitmq
+    ports:
+      - "8080:8080"
+    depends_on:
+      - product-db
+      - product-redis
+      - rabbitmq
+    restart: unless-stopped
+    networks:
+      - shared-net
+
+  order-service:
+    build:
+      context: .
+      dockerfile: services/order-service/Dockerfile
+    container_name: order-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://order-db:5432/order-db
+      SPRING_RABBITMQ_HOST: rabbitmq
+    ports:
+      - "8081:8080"
+    depends_on:
+      - order-db
+      - rabbitmq
+    restart: unless-stopped
+    networks:
+      - shared-net
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+    container_name: notification-service
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+    ports:
+      - "8082:8080"
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+    networks:
+      - shared-net
+
+  product-db:
+    image: postgres:16-alpine
+    container_name: product-db
+    environment:
+      POSTGRES_DB: product-db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - product-db-data:/var/lib/postgresql/data
+    networks:
+      - shared-net
+    restart: unless-stopped
+
+  order-db:
+    image: postgres:16-alpine
+    container_name: order-db
+    environment:
+      POSTGRES_DB: order-db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - order-db-data:/var/lib/postgresql/data
+    networks:
+      - shared-net
+    restart: unless-stopped
+
+  product-redis:
+    image: redis:7-alpine
+    container_name: product-redis
+    networks:
+      - shared-net
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+      - "15692:15692"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbitmq_prometheus true"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - shared-net
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./alert_rules.yml:/etc/prometheus/alert_rules.yml
+    networks:
+      - shared-net
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - shared-net
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    networks:
+      - shared-net
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - shared-net
+    restart: unless-stopped
+
+volumes:
+  product-db-data:
+  order-db-data:
+  rabbitmq-data:
+  grafana-data:
+
+networks:
+  shared-net:

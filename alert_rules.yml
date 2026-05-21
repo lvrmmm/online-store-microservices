@@ -1,0 +1,33 @@
+groups:
+  - name: availability
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Instance {{ $labels.instance }} has been unreachable for over 1 minute."
+
+  - name: products
+    rules:
+      - alert: HighProductCreationRate
+        expr: increase(products_created_total[5m]) > 20
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Unusually high product creation rate"
+          description: "More than 20 products were created in the last 5 minutes."
+
+  - name: orders
+    rules:
+      - alert: HighOrderCreationRate
+        expr: increase(orders_created_total[5m]) > 50
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Unusually high order creation rate"
+          description: "More than 50 orders were created in the last 5 minutes."

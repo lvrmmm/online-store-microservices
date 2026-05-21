@@ -1,4 +1,4 @@
-# Мультисервисное приложение
+# Микросервисная система интернет-магазина 
 
 > Автор: Мария Игнатова  
 > Стек: Java 17 · Spring Boot 3.2.5 · Docker Compose · PostgreSQL · Redis · RabbitMQ · Prometheus · Grafana
